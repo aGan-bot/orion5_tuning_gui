@@ -11,7 +11,7 @@ hazirlanmistir.
 - 6 eksen icin slider tabanli tuning
 - Parametre yazma: `q_ref`, `kp`, `kd`, `gain_vector`
 - Parametre okuma: `Refresh From Node`
-- Home preset: `0, 0, -90, 0, -90, 0` (deg)
+- Home preset: `0, 0, -90, 0, 90, 0` (deg)
 - Canli izleme:
   - `q(rad)`
   - `qd(rad/s)`

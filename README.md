@@ -60,6 +60,15 @@ ros2 launch orion5_tuning_gui orion5_tuning_gui.launch.py
 `orion5_tuning_gui.launch.py`, altta `mujoco_pendulum/launch/orion5_gravity_comp.launch.py`
 launch dosyasini include eder.
 
+Pinocchio FF hold testi icin:
+
+```bash
+ros2 launch orion5_tuning_gui orion5_ff_tuning_gui.launch.py
+```
+
+Bu launch, `mujoco_pendulum/launch/orion5_pinocchio_ff_hold.launch.py` ile birlikte GUI'yi
+`/pinocchio_ff_hold_node` parametrelerine baglar.
+
 ## Kullanim Akisi
 
 1. `Refresh From Node` ile mevcut parametreleri cek.
@@ -80,4 +89,3 @@ launch dosyasini include eder.
 
 - `orion5_tuning_gui/tuning_gui.py`: Ana GUI ve ROS bridge
 - `launch/orion5_tuning_gui.launch.py`: Sim + GUI ortak launch
-

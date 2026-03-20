@@ -9,7 +9,10 @@ setup(
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/' + package_name + '/launch', ['launch/orion5_tuning_gui.launch.py']),
+        ('share/' + package_name + '/launch', [
+            'launch/orion5_tuning_gui.launch.py',
+            'launch/orion5_ff_tuning_gui.launch.py',
+        ]),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

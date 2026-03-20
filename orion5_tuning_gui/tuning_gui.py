@@ -235,7 +235,7 @@ class TuningWindow(QWidget):
         self.btn_apply = QPushButton("Apply Arrays")
         self.btn_refresh = QPushButton("Refresh From Node")
         self.btn_load_last = QPushButton("Load Last Local")
-        self.btn_home = QPushButton("Preset Home 0,0,-90,0,-90,0")
+        self.btn_home = QPushButton("Preset Home 0,0,-90,0,90,0")
         btn_layout.addWidget(self.btn_apply)
         btn_layout.addWidget(self.btn_refresh)
         btn_layout.addWidget(self.btn_load_last)
@@ -252,7 +252,7 @@ class TuningWindow(QWidget):
         self.btn_home.clicked.connect(self.set_home_pose)
 
     def set_home_pose(self) -> None:
-        home = [0.0, 0.0, -math.pi / 2.0, 0.0, -math.pi / 2.0, 0.0]
+        home = [0.0, 0.0, -math.pi / 2.0, 0.0, math.pi / 2.0, 0.0]
         for i, rad in enumerate(home):
             self.rows[i].set_qref_rad(rad)
 

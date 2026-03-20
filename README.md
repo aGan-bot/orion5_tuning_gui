@@ -68,6 +68,9 @@ ros2 launch orion5_tuning_gui orion5_ff_tuning_gui.launch.py
 
 Bu launch, `mujoco_pendulum/launch/orion5_pinocchio_ff_hold.launch.py` ile birlikte GUI'yi
 `/pinocchio_ff_hold_node` parametrelerine baglar.
+FF modunda ek olarak:
+- `joint_max_speed_deg` ve `joint_max_accel_deg` sliderlari
+- `TimeSync: ON/OFF` butonu
 
 ## Kullanim Akisi
 

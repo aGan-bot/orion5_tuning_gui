@@ -47,7 +47,14 @@ class RosBridge(Node):
         self.last_bias = [0.0] * 6
 
         if self.ff_mode:
-            self.param_names = ["q_ref", "kp", "kd", "joint_max_speed_deg", "joint_max_accel_deg"]
+            self.param_names = [
+                "q_ref",
+                "kp",
+                "kd",
+                "joint_max_speed_deg",
+                "joint_max_accel_deg",
+                "time_sync_enabled",
+            ]
         else:
             self.param_names = ["q_ref", "kp", "kd", "gain_vector"]
 
@@ -114,6 +121,7 @@ class RosBridge(Node):
         gain: List[float],
         speed_deg: List[float],
         accel_deg: List[float],
+        time_sync_enabled: bool,
     ) -> None:
         if not self.set_params_client.service_is_ready():
             self.get_logger().warn(f"{self.target_node} parameter service not ready")
@@ -126,6 +134,7 @@ class RosBridge(Node):
                 Parameter("kd", Parameter.Type.DOUBLE_ARRAY, kd),
                 Parameter("joint_max_speed_deg", Parameter.Type.DOUBLE_ARRAY, speed_deg),
                 Parameter("joint_max_accel_deg", Parameter.Type.DOUBLE_ARRAY, accel_deg),
+                Parameter("time_sync_enabled", Parameter.Type.BOOL, time_sync_enabled),
             ]
         else:
             param_objs = [
@@ -239,6 +248,7 @@ class TuningWindow(QWidget):
         self.setWindowTitle("Orion5 Gravity/Hold Tuning")
         self.rows = [SliderRow(i) for i in range(6)]
         self.local_profile_path = Path.home() / ".ros" / "orion5_tuning_last.json"
+        self.time_sync_enabled = True
 
         self.status_label = QLabel("Param service bekleniyor...")
 
@@ -307,11 +317,13 @@ class TuningWindow(QWidget):
         self.btn_load_last = QPushButton("Load Last Local")
         self.btn_home = QPushButton("Preset Home 0,0,-90,0,90,0")
         self.btn_random_qref = QPushButton("Random q_ref")
+        self.btn_sync_toggle = QPushButton("TimeSync: ON")
         btn_layout.addWidget(self.btn_apply)
         btn_layout.addWidget(self.btn_refresh)
         btn_layout.addWidget(self.btn_load_last)
         btn_layout.addWidget(self.btn_home)
         btn_layout.addWidget(self.btn_random_qref)
+        btn_layout.addWidget(self.btn_sync_toggle)
         root.addLayout(btn_layout)
 
         root.addWidget(self.status_label)
@@ -323,6 +335,7 @@ class TuningWindow(QWidget):
         self.btn_load_last.clicked.connect(self.load_local_profile)
         self.btn_home.clicked.connect(self.set_home_pose)
         self.btn_random_qref.clicked.connect(self.set_random_qref)
+        self.btn_sync_toggle.clicked.connect(self.toggle_time_sync)
 
     def set_home_pose(self) -> None:
         home = [0.0, 0.0, -math.pi / 2.0, 0.0, math.pi / 2.0, 0.0]
@@ -343,9 +356,9 @@ class TuningWindow(QWidget):
         gain = [row.gain() for row in self.rows]
         speed_deg = [row.speed_deg() for row in self.rows]
         accel_deg = [row.accel_deg() for row in self.rows]
-        return q_ref, kp, kd, gain, speed_deg, accel_deg
+        return q_ref, kp, kd, gain, speed_deg, accel_deg, self.time_sync_enabled
 
-    def save_local_profile(self, q_ref, kp, kd, gain, speed_deg, accel_deg) -> None:
+    def save_local_profile(self, q_ref, kp, kd, gain, speed_deg, accel_deg, time_sync_enabled) -> None:
         payload = {
             "q_ref": q_ref,
             "kp": kp,
@@ -353,6 +366,7 @@ class TuningWindow(QWidget):
             "gain_vector": gain,
             "joint_max_speed_deg": speed_deg,
             "joint_max_accel_deg": accel_deg,
+            "time_sync_enabled": bool(time_sync_enabled),
         }
         self.local_profile_path.parent.mkdir(parents=True, exist_ok=True)
         self.local_profile_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -372,6 +386,8 @@ class TuningWindow(QWidget):
         gain = payload.get("gain_vector", [])
         speed_deg = payload.get("joint_max_speed_deg", [])
         accel_deg = payload.get("joint_max_accel_deg", [])
+        self.time_sync_enabled = bool(payload.get("time_sync_enabled", True))
+        self._update_sync_button()
 
         for i, row in enumerate(self.rows):
             if i < len(q_ref):
@@ -390,11 +406,11 @@ class TuningWindow(QWidget):
         return True
 
     def apply_to_node(self) -> None:
-        q_ref, kp, kd, gain, speed_deg, accel_deg = self.collect_arrays()
-        self.ros.set_arrays(q_ref, kp, kd, gain, speed_deg, accel_deg)
-        self.save_local_profile(q_ref, kp, kd, gain, speed_deg, accel_deg)
+        q_ref, kp, kd, gain, speed_deg, accel_deg, time_sync_enabled = self.collect_arrays()
+        self.ros.set_arrays(q_ref, kp, kd, gain, speed_deg, accel_deg, time_sync_enabled)
+        self.save_local_profile(q_ref, kp, kd, gain, speed_deg, accel_deg, time_sync_enabled)
         if self.ros.ff_mode:
-            self.status_label.setText("Parametreler gönderildi (q_ref/kp/kd/speed/accel)")
+            self.status_label.setText("Parametreler gönderildi (q_ref/kp/kd/speed/accel/time_sync)")
         else:
             self.status_label.setText("Parametreler gönderildi (q_ref/kp/kd/gain_vector)")
 
@@ -409,6 +425,10 @@ class TuningWindow(QWidget):
             gain = param_dict.get("gain_vector", [])
             speed_deg = param_dict.get("joint_max_speed_deg", [])
             accel_deg = param_dict.get("joint_max_accel_deg", [])
+            tsync = param_dict.get("time_sync_enabled", [])
+            if tsync:
+                self.time_sync_enabled = bool(tsync[0])
+                self._update_sync_button()
 
             # Guard: if local profile was loaded at startup, ignore an all-zero startup snapshot.
             # This prevents losing tuned values when target node is still initializing.
@@ -438,6 +458,13 @@ class TuningWindow(QWidget):
             self.status_label.setText("Parametreler node'dan okundu")
 
         self.ros.request_params(on_params)
+
+    def _update_sync_button(self) -> None:
+        self.btn_sync_toggle.setText("TimeSync: ON" if self.time_sync_enabled else "TimeSync: OFF")
+
+    def toggle_time_sync(self) -> None:
+        self.time_sync_enabled = not self.time_sync_enabled
+        self._update_sync_button()
 
     def update_live(self) -> None:
         for i, row in enumerate(self.rows):
